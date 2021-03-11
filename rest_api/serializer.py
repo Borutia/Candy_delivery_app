@@ -2,7 +2,7 @@ from rest_framework import serializers
 from datetime import datetime
 
 from .models import Courier, Order
-from .const import CourierType
+from .const import CourierType, FORMAT_TIME
 
 
 class BaseCourierSerializer(serializers.ModelSerializer):
@@ -28,9 +28,13 @@ class BaseCourierSerializer(serializers.ModelSerializer):
     def validate_working_hours(self, data):
         if not data:
             raise serializers.ValidationError('Working hours is empty')
-        elif len(data) > 3:
-            raise serializers.ValidationError('The work schedule can only be divided into 3 intervals')
-        #проверку даты добавить
+        for date in data:
+            start_work, stop_work = date.split('-')
+            try:
+                datetime.strptime(start_work, FORMAT_TIME)
+                datetime.strptime(stop_work, FORMAT_TIME)
+            except ValueError:
+                raise serializers.ValidationError('Invalid format time in working hours')
         return data
 
 
@@ -41,16 +45,21 @@ class CourierCreateSerializer(serializers.ModelSerializer):
         model = Courier
         fields = ('data',)
 
-    # def validate(self, data):
-    #     from collections import Counter
-    #     count = Counter([courier['courier_id'] for courier in data['data']])
-    #     if count.most_common(1)[0][1] > 1:
-    #         raise serializers.ValidationError('Duplicate courier id')
-    #     return data
-
     def create(self, validated_data):
         couriers_id = []
         for courier in validated_data['data']:
             Courier.objects.create(**courier)
             couriers_id.append({'id': courier['courier_id']})
         return couriers_id
+
+
+class CourierGetUpdateSerializer(BaseCourierSerializer):
+    class Meta:
+        model = Courier
+        fields = ('courier_id', 'courier_type', 'regions', 'working_hours',)
+        read_only_fields = ('courier_id',)
+
+    def validate(self, data):
+        if 'courier_id' in data:
+            raise serializers.ValidationError()
+        return data

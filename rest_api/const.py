@@ -1,9 +1,12 @@
+FORMAT_TIME = '%H:%M'
+
+
 class CourierType:
-    foot = 'foot'
-    bike = 'bike'
-    car = 'car'
+    FOOT = 'foot'
+    BIKE = 'bike'
+    CAR = 'car'
     choices = (
-        (foot, 'Пеший курьер'),
-        (bike, 'Велокурьер'),
-        (car, 'Курьер на автомобиле'),
+        (FOOT, 'Пеший курьер'),
+        (BIKE, 'Велокурьер'),
+        (CAR, 'Курьер на автомобиле'),
     )
