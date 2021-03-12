@@ -49,8 +49,8 @@ class CouriersPostTestCase(TestCase):
             "data": [
                 {
                     "courier_id": 5,
-                    "courier_type": "",
-                    "regions": [1, 12, 22],
+                    "courier_type": "foot",
+                    "regions": [],
                     "working_hours": ["11:35-14:05", "09:00-11:00"]
                 }
             ]
@@ -92,5 +92,22 @@ class CouriersPostTestCase(TestCase):
         response = self.client.post('/couriers', data=couriers, content_type='application/json')
         self.assertEqual(response.status_code, 400)
         response_data = {'validation_error': {"couriers": [{"id": 7}]}}
+        self.assertEqual(response.data, response_data)
+
+    def test_wrong_courier_type(self):
+        """ Загрузка данных с невалидным типом курьера, проверка статуса 400 """
+        couriers = {
+            "data": [
+                {
+                    "courier_id": 8,
+                    "courier_type": "bus",
+                    "regions": [1, 12, 22],
+                    "working_hours": ["11:35-14:05", "09:00-11:00"]
+                }
+            ]
+        }
+        response = self.client.post('/couriers', data=couriers, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        response_data = {'validation_error': {"couriers": [{"id": 8}]}}
         self.assertEqual(response.data, response_data)
 

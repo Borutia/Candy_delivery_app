@@ -8,7 +8,7 @@ from .models import Courier, Order
 
 class Couriers(APIView):
     def post(self, request):
-        if not request.data:
+        if not request.data or not request.data.get('data'):
             return Response({'validation_error': {'couriers': []}}, status=status.HTTP_400_BAD_REQUEST)
         serializer = CourierCreateSerializer(data=request.data)
         if serializer.is_valid():
@@ -29,3 +29,16 @@ class Couriers(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class Orders(APIView):
+    def post(self, request):
+        if not request.data or not request.data.get('data'):
+            return Response({'validation_error': {'orders': []}}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = OrderCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.save()
+            return Response({'orders': data}, status=status.HTTP_201_CREATED)
+        error_id = [{'id': order['order_id']}
+                    for error, order in zip(serializer.errors['data'], serializer.initial_data['data']) if error]
+        return Response({'validation_error': {'orders': error_id}}, status=status.HTTP_400_BAD_REQUEST)
