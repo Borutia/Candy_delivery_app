@@ -51,3 +51,10 @@ class CouriersPatchTestCase(TestCase):
         response = self.client.patch('/couriers/2', data=courier, content_type='application/json')
         self.assertEqual(response.status_code, 400)
 
+    def test_empty_field(self):
+        """ Запрос на измение с пустым полем """
+        courier = {
+            "regions": [],
+        }
+        response = self.client.patch('/couriers/1', data=courier, content_type='application/json')
+        self.assertEqual(response.status_code, 400)

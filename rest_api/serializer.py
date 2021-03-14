@@ -30,11 +30,11 @@ class BaseCourierSerializer(serializers.ModelSerializer):
         if not data:
             raise serializers.ValidationError('Working hours is empty')
         for date in data:
-            start_work, stop_work = date.split('-')
             try:
+                start_work, stop_work = date.split('-')
                 datetime.strptime(start_work, FORMAT_TIME)
                 datetime.strptime(stop_work, FORMAT_TIME)
-            except ValueError:
+            except Exception:
                 raise serializers.ValidationError('Invalid format time in working hours')
         return data
 
@@ -83,11 +83,11 @@ class BaseOrderSerializer(serializers.ModelSerializer):
         if not data:
             raise serializers.ValidationError('Delivery hours is empty')
         for date in data:
-            start_delivery, stop_delivery = date.split('-')
             try:
+                start_delivery, stop_delivery = date.split('-')
                 datetime.strptime(start_delivery, FORMAT_TIME)
                 datetime.strptime(stop_delivery, FORMAT_TIME)
-            except ValueError:
+            except Exception:
                 raise serializers.ValidationError('Invalid format time in delivery hours')
         return data
 

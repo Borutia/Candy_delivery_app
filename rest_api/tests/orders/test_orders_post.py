@@ -27,6 +27,26 @@ class OrdersPostTestCase(TestCase):
         response = self.client.post('/orders', content_type='application/json')
         self.assertEqual(response.status_code, 400)
 
+    def test_non_unique_id(self):
+        """ Загрузка данных с неуникальными order_id, проверка статуса 400 """
+        orders = {
+            "data": [
+                {
+                    "order_id": 1,
+                    "weight": 0.23,
+                    "region": 12,
+                    "delivery_hours": [
+                        "09:00-18:00"
+                    ]
+                }
+            ]
+        }
+        response = self.client.post('/orders', data=orders, content_type='application/json')
+        response = self.client.post('/orders', data=orders, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        response_data = {'validation_error': {"orders": [{"id": 1}]}}
+        self.assertEqual(response.data, response_data)
+
     def test_missing_field(self):
         """ Загрузка данных с пропущенным полем, проверка статуса 400 """
         orders = {

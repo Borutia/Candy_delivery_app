@@ -27,6 +27,24 @@ class CouriersPostTestCase(TestCase):
         response = self.client.post('/couriers', content_type='application/json')
         self.assertEqual(response.status_code, 400)
 
+    def test_non_unique_id(self):
+        """ Загрузка данных с неуникальными courier_id, проверка статуса 400 """
+        orders = {
+            "data": [
+                {
+                    "courier_id": 1,
+                    "courier_type": "foot",
+                    "regions": [1, 12, 22],
+                    "working_hours": ["11:35-14:05", "09:00-11:00"]
+                }
+            ]
+        }
+        response = self.client.post('/couriers', data=orders, content_type='application/json')
+        response = self.client.post('/couriers', data=orders, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        response_data = {'validation_error': {"couriers": [{"id": 1}]}}
+        self.assertEqual(response.data, response_data)
+
     def test_missing_field(self):
         """ Загрузка данных с пропущенным полем, проверка статуса 400 """
         couriers = {
