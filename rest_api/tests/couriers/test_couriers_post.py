@@ -5,7 +5,7 @@ from django.test import TestCase
 
 class CouriersPostTestCase(TestCase):
     def test_couriers_good(self):
-        """ Загрузка данных, проверка статуса 201 """
+        """Загрузка данных, проверка статуса 201"""
         with open('rest_api/tests/couriers/good_couriers.json', 'r', encoding='utf-8') as file:
             self.couriers = json.load(file)
         response = self.client.post('/couriers', data=self.couriers, content_type='application/json')
@@ -14,7 +14,7 @@ class CouriersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_couriers_bad(self):
-        """ Загрузка данных, проверка статуса 400 """
+        """Загрузка данных, проверка статуса 400"""
         with open('rest_api/tests/couriers/bad_couriers.json', 'r', encoding='utf-8') as file:
             self.couriers = json.load(file)
         response = self.client.post('/couriers', data=self.couriers, content_type='application/json')
@@ -23,7 +23,7 @@ class CouriersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_missing_data(self):
-        """ Обращение к обработчику с пустым телом, проверка статуса 400 """
+        """Обращение к обработчику с пустым телом, проверка статуса 400"""
         response = self.client.post('/couriers', content_type='application/json')
         self.assertEqual(response.status_code, 400)
 
@@ -46,7 +46,7 @@ class CouriersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_missing_field(self):
-        """ Загрузка данных с пропущенным полем, проверка статуса 400 """
+        """Загрузка данных с пропущенным полем, проверка статуса 400"""
         couriers = {
             "data": [
                 {
@@ -62,7 +62,7 @@ class CouriersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_empty_field(self):
-        """ Загрузка данных с пустым полем, проверка статуса 400 """
+        """Загрузка данных с пустым полем, проверка статуса 400"""
         couriers = {
             "data": [
                 {
@@ -79,7 +79,7 @@ class CouriersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_validate_working_hours(self):
-        """ Загрузка данных с невалидным временем, проверка статуса 400 """
+        """Загрузка данных с невалидным временем, проверка статуса 400"""
         couriers = {
             "data": [
                 {
@@ -96,7 +96,7 @@ class CouriersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_negative_regions(self):
-        """ Загрузка данных с отрицательным районом, проверка статуса 400 """
+        """Загрузка данных с отрицательным районом, проверка статуса 400"""
         couriers = {
             "data": [
                 {
@@ -113,7 +113,7 @@ class CouriersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_wrong_courier_type(self):
-        """ Загрузка данных с невалидным типом курьера, проверка статуса 400 """
+        """Загрузка данных с невалидным типом курьера, проверка статуса 400"""
         couriers = {
             "data": [
                 {

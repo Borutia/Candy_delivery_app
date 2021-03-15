@@ -3,7 +3,8 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from .models import Courier, Order
-from .const import CourierType, FORMAT_TIME
+from .const import CourierType, LIFTING_CAPACITY, StatusCourier, StatusOrder
+from .utils import parse_time, check_cross_of_time
 
 
 class BaseCourierSerializer(serializers.ModelSerializer):
@@ -29,11 +30,9 @@ class BaseCourierSerializer(serializers.ModelSerializer):
     def validate_working_hours(self, data):
         if not data:
             raise serializers.ValidationError('Working hours is empty')
-        for date in data:
+        for time in data:
             try:
-                start_work, stop_work = date.split('-')
-                datetime.strptime(start_work, FORMAT_TIME)
-                datetime.strptime(stop_work, FORMAT_TIME)
+                parse_time(time)
             except Exception:
                 raise serializers.ValidationError('Invalid format time in working hours')
         return data
@@ -47,8 +46,12 @@ class CourierCreateSerializer(serializers.ModelSerializer):
         fields = ('data',)
 
     def create(self, validated_data):
-        return [{'id': courier['courier_id']} for courier in validated_data['data']
-                if Courier.objects.create(**courier)]
+        couriers_id = []
+        for courier in validated_data['data']:
+            courier['lifting_capacity'] = LIFTING_CAPACITY[courier['courier_type']]
+            Courier.objects.create(**courier)
+            couriers_id.append({'id': courier['courier_id']})
+        return couriers_id
 
 
 class CourierGetUpdateSerializer(BaseCourierSerializer):
@@ -59,7 +62,14 @@ class CourierGetUpdateSerializer(BaseCourierSerializer):
 
     def validate_courier_id(self, data):
         if data:
-            raise serializers.ValidationError()
+            raise serializers.ValidationError('Wrong field')
+        return data
+
+    def validate(self, data):
+        if not data:
+            raise serializers.ValidationError('Data is empty')
+        if data.get('courier_type'):
+            data['lifting_capacity'] = LIFTING_CAPACITY[data['courier_type']]
         return data
 
 
@@ -82,11 +92,9 @@ class BaseOrderSerializer(serializers.ModelSerializer):
     def validate_delivery_hours(self, data):
         if not data:
             raise serializers.ValidationError('Delivery hours is empty')
-        for date in data:
+        for time in data:
             try:
-                start_delivery, stop_delivery = date.split('-')
-                datetime.strptime(start_delivery, FORMAT_TIME)
-                datetime.strptime(stop_delivery, FORMAT_TIME)
+                parse_time(time)
             except Exception:
                 raise serializers.ValidationError('Invalid format time in delivery hours')
         return data
@@ -102,3 +110,42 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         return [{'id': order['order_id']} for order in validated_data['data']
                 if Order.objects.create(**order)]
+
+
+class OrdersAssignSerializer(serializers.ModelSerializer):
+    courier_id = serializers.IntegerField(min_value=1)
+
+    class Meta:
+        model = Courier
+        fields = ('courier_id',)
+        read_only_fields = ('courier_id',)
+
+    def validate(self, validated_data):
+        response = {}
+        if self.instance.status_courier == StatusCourier.FREE:
+            orders_id = []
+            new_orders = Order.objects.filter(status_order=StatusOrder.NEW, region__in=self.instance.regions,
+                                              weight__lte=self.instance.lifting_capacity)
+            if new_orders:
+                assign_time = datetime.now()
+                for order in new_orders:
+                    if check_cross_of_time(self.instance.working_hours, order.delivery_hours):
+                        order.assign_time = assign_time
+                        order.status_order = StatusOrder.IN_PROCESS
+                        order.courier = self.instance
+                        orders_id.append(order.order_id)
+                        order.save()
+                if orders_id:
+                    self.instance.last_complete_time = assign_time
+                    self.instance.assign_time = assign_time
+                    self.instance.orders_id = orders_id
+                    self.instance.status_courier = StatusCourier.BUSY
+                    response['assign_time'] = assign_time
+                response['orders'] = orders_id
+            else:
+                response['orders'] = []
+                return response
+        else:
+            response['orders'] = self.instance.orders_id
+            response['assign_time'] = self.instance.assign_time
+        return response

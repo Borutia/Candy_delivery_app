@@ -16,7 +16,7 @@ class CouriersPatchTestCase(TestCase):
         self.client.post('/couriers', data=couriers, content_type='application/json')
 
     def test_courier_good(self):
-        """ Изменение данных, проверка статуса 200 """
+        """Изменение данных, проверка статуса 200"""
         courier = {
             "working_hours": ["09:00-12:00"]
         }
@@ -31,12 +31,12 @@ class CouriersPatchTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_missing_data(self):
-        """ Обращение к обработчику с пустым телом, проверка статуса 400 """
+        """Обращение к обработчику с пустым телом, проверка статуса 400"""
         response = self.client.patch('/couriers/1', content_type='application/json')
         self.assertEqual(response.status_code, 400)
 
     def test_with_courier_id(self):
-        """ Передача запрещенного поля courier_id """
+        """Передача запрещенного поля courier_id"""
         courier = {
             "courier_id": 2
         }
@@ -44,7 +44,7 @@ class CouriersPatchTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_wrong_courier_id(self):
-        """ Запрос на измение с несуществующим courier_id """
+        """Запрос на измение с несуществующим courier_id"""
         courier = {
             "courier_type": "foot",
         }
@@ -52,7 +52,7 @@ class CouriersPatchTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_empty_field(self):
-        """ Запрос на измение с пустым полем """
+        """Запрос на измение с пустым полем"""
         courier = {
             "regions": [],
         }
