@@ -10,7 +10,7 @@ class CouriersPostTestCase(TestCase):
             self.couriers = json.load(file)
         response = self.client.post('/couriers', data=self.couriers, content_type='application/json')
         self.assertEqual(response.status_code, 201)
-        response_data = {"couriers": [{"id": 1}, {"id": 2}, {"id": 3}]}
+        response_data = {"couriers": [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 5}]}
         self.assertEqual(response.data, response_data)
 
     def test_couriers_bad(self):

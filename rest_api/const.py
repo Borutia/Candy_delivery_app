@@ -39,4 +39,5 @@ LIFTING_CAPACITY = {
     'car': 50
 }
 
+# Формат времени
 FORMAT_TIME = '%H:%M'

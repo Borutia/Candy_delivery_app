@@ -3,6 +3,7 @@ from django.test import TestCase
 
 class CouriersPatchTestCase(TestCase):
     def setUp(self):
+        """Инициализация данных"""
         couriers = {
             "data": [
                 {
@@ -36,7 +37,7 @@ class CouriersPatchTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_with_courier_id(self):
-        """Передача запрещенного поля courier_id"""
+        """Передача запрещенного поля courier_id, проверка статуса 400"""
         courier = {
             "courier_id": 2
         }
@@ -44,7 +45,7 @@ class CouriersPatchTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_wrong_courier_id(self):
-        """Запрос на измение с несуществующим courier_id"""
+        """Запрос на измение с несуществующим courier_id, проверка статуса 400"""
         courier = {
             "courier_type": "foot",
         }
@@ -52,7 +53,7 @@ class CouriersPatchTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_empty_field(self):
-        """Запрос на измение с пустым полем"""
+        """Запрос на измение с пустым полем, проверка статуса 400"""
         courier = {
             "regions": [],
         }

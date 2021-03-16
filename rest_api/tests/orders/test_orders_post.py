@@ -5,16 +5,16 @@ from django.test import TestCase
 
 class OrdersPostTestCase(TestCase):
     def test_orders_good(self):
-        """ Загрузка данных, проверка статуса 201 """
+        """Загрузка данных, проверка статуса 201"""
         with open('rest_api/tests/orders/good_orders.json', 'r', encoding='utf-8') as file:
             self.orders = json.load(file)
         response = self.client.post('/orders', data=self.orders, content_type='application/json')
         self.assertEqual(response.status_code, 201)
-        response_data = {"orders": [{"id": 1}, {"id": 2}, {"id": 3}]}
+        response_data = {"orders": [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 5}]}
         self.assertEqual(response.data, response_data)
 
     def test_orders_bad(self):
-        """ Загрузка данных, проверка статуса 400 """
+        """Загрузка данных, проверка статуса 400"""
         with open('rest_api/tests/orders/bad_orders.json', 'r', encoding='utf-8') as file:
             self.orders = json.load(file)
         response = self.client.post('/orders', data=self.orders, content_type='application/json')
@@ -23,12 +23,12 @@ class OrdersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_missing_data(self):
-        """ Обращение к обработчику с пустым телом, проверка статуса 400 """
+        """Обращение к обработчику с пустым телом, проверка статуса 400"""
         response = self.client.post('/orders', content_type='application/json')
         self.assertEqual(response.status_code, 400)
 
     def test_non_unique_id(self):
-        """ Загрузка данных с неуникальными order_id, проверка статуса 400 """
+        """Загрузка данных с неуникальными order_id, проверка статуса 400"""
         orders = {
             "data": [
                 {
@@ -48,7 +48,7 @@ class OrdersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_missing_field(self):
-        """ Загрузка данных с пропущенным полем, проверка статуса 400 """
+        """Загрузка данных с пропущенным полем, проверка статуса 400"""
         orders = {
             "data": [
                 {
@@ -66,7 +66,7 @@ class OrdersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_empty_field(self):
-        """ Загрузка данных с пустым полем, проверка статуса 400 """
+        """Загрузка данных с пустым полем, проверка статуса 400"""
         orders = {
             "data": [
                 {
@@ -83,7 +83,7 @@ class OrdersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_validate_working_hours(self):
-        """ Загрузка данных с невалидным временем, проверка статуса 400 """
+        """Загрузка данных с невалидным временем, проверка статуса 400"""
         orders = {
             "data": [
                 {
@@ -102,7 +102,7 @@ class OrdersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_negative_regions(self):
-        """ Загрузка данных с отрицательным районом, проверка статуса 400 """
+        """Загрузка данных с отрицательным районом, проверка статуса 400"""
         orders = {
             "data": [
                 {
@@ -121,7 +121,7 @@ class OrdersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_wrong_weight(self):
-        """ Загрузка данных с невалидным весом, проверка статуса 400 """
+        """Загрузка данных с невалидным весом, проверка статуса 400"""
         orders = {
             "data": [
                 {
