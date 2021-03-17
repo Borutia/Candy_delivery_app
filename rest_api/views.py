@@ -12,30 +12,65 @@ class Couriers(APIView):
         """API GET /couriers/$courier_id"""
         instance = Courier.objects.filter(courier_id=courier_id).first()
         if not instance:
-            return Response({'courier_id': ErrorMessage.INSTANCE_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    'courier_id': ErrorMessage.INSTANCE_NOT_FOUND
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         serializer = CouriersGetSerializer(instance)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
         """API POST /couriers"""
         if not request.data or not request.data.get('data'):
-            return Response({'validation_error': {'couriers': []}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    'validation_error': {
+                        'couriers': []
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         serializer = CourierCreateSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.save()
             return Response({'couriers': data}, status=status.HTTP_201_CREATED)
         error_id = [{'id': courier['courier_id']}
-                    for error, courier in zip(serializer.errors['data'], serializer.initial_data['data']) if error]
-        return Response({'validation_error': {'couriers': error_id}}, status=status.HTTP_400_BAD_REQUEST)
+                    for error, courier in zip(serializer.errors['data'],
+                                              serializer.initial_data['data']
+                                              ) if error]
+        return Response(
+            {
+                'validation_error': {
+                    'couriers': error_id
+                }
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     def patch(self, request, courier_id):
         """API PATCH /couriers/$courier_id"""
         if not request.data:
-            return Response({'data': ErrorMessage.DATA_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    'data': ErrorMessage.DATA_NOT_FOUND
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         instance = Courier.objects.filter(courier_id=courier_id).first()
         if not instance:
-            return Response({'courier_id': ErrorMessage.INSTANCE_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
-        serializer = CourierGetUpdateSerializer(instance, data=request.data, partial=True)
+            return Response(
+                {
+                    'courier_id': ErrorMessage.INSTANCE_NOT_FOUND
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = CourierGetUpdateSerializer(
+            instance,
+            data=request.data,
+            partial=True
+        )
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -46,31 +81,76 @@ class Orders(APIView):
     def post(self, request):
         """API POST /orders"""
         if not request.data or not request.data.get('data'):
-            return Response({'validation_error': {'orders': []}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    'validation_error': {
+                        'orders': []
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         serializer = OrderCreateSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.save()
-            return Response({'orders': data}, status=status.HTTP_201_CREATED)
+            return Response(
+                {
+                    'orders': data
+                },
+                status=status.HTTP_201_CREATED
+            )
         error_id = [{'id': order['order_id']}
-                    for error, order in zip(serializer.errors['data'], serializer.initial_data['data']) if error]
-        return Response({'validation_error': {'orders': error_id}}, status=status.HTTP_400_BAD_REQUEST)
+                    for error, order in zip(serializer.errors['data'],
+                                            serializer.initial_data['data']
+                                            ) if error]
+        return Response(
+            {
+                'validation_error': {
+                    'orders': error_id
+                }
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class OrdersAssign(APIView):
     """API POST /orders/assign"""
     def post(self, request):
         if not request.data:
-            return Response({'data': ErrorMessage.DATA_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    'data': ErrorMessage.DATA_NOT_FOUND
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         try:
-            instance = Courier.objects.filter(courier_id=request.data['courier_id']).first()
+            instance = Courier.objects.filter(
+                courier_id=request.data['courier_id']
+            ).first()
         except Exception:
-            return Response({'courier_id': ErrorMessage.INSTANCE_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    'courier_id': ErrorMessage.INSTANCE_NOT_FOUND
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         if not instance:
-            return Response({'courier_id': ErrorMessage.INSTANCE_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
-        serializer = OrdersAssignSerializer(instance, data=request.data, partial=True)
+            return Response(
+                {
+                    'courier_id': ErrorMessage.INSTANCE_NOT_FOUND
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = OrdersAssignSerializer(
+            instance,
+            data=request.data,
+            partial=True
+        )
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+            return Response(
+                serializer.validated_data,
+                status=status.HTTP_200_OK
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -78,15 +158,37 @@ class OrdersComplete(APIView):
     """API POST /orders/complete"""
     def post(self, request):
         if not request.data:
-            return Response({'data': ErrorMessage.DATA_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    'data': ErrorMessage.DATA_NOT_FOUND
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         try:
-            instance = Order.objects.filter(order_id=request.data['order_id']).first()
+            instance = Order.objects.filter(
+                order_id=request.data['order_id']
+            ).first()
         except Exception:
-            return Response({'order_id': ErrorMessage.INSTANCE_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    'order_id': ErrorMessage.INSTANCE_NOT_FOUND
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         if not instance:
-            return Response({'order_id': ErrorMessage.INSTANCE_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    'order_id': ErrorMessage.INSTANCE_NOT_FOUND
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         serializer = OrdersCompleteSerializer(instance, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({'order_id': serializer.validated_data['order_id']}, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    'order_id': serializer.validated_data['order_id']
+                },
+                status=status.HTTP_200_OK
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
