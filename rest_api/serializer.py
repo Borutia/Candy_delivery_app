@@ -65,7 +65,7 @@ class CourierGetUpdateSerializer(BaseCourierSerializer):
 
     def validate_courier_id(self, data):
         if data:
-            raise serializers.ValidationError('Wrong field')
+            raise serializers.ValidationError('Wrong field courier_id')
         return data
 
     def validate(self, data):
@@ -171,5 +171,28 @@ class OrdersCompleteSerializer(serializers.ModelSerializer):
         model = Order
         fields = ('order_id', 'complete_time', 'courier_id',)
 
+    def validate_courier_id(self, data):
+        if not self.instance.courier:
+            raise serializers.ValidationError('Order is not assigned')
+        elif self.instance.courier_id != data:
+            raise serializers.ValidationError('Order is assigned to a different courier')
+        return data
+
+    def validate_complete_time(self, data):
+        if self.instance.assign_time:
+            if data < self.instance.assign_time:
+                raise serializers.ValidationError('Complete time is less than assign time')
+        return data
+
     def validate(self, validated_data):
+        if self.instance.status_order == StatusOrder.IN_PROCESS:
+            self.instance.status_order = StatusOrder.COMPLETE
+            self.instance.complete_time = validated_data['complete_time']
+            self.instance.delivery_time = (validated_data['complete_time'] - self.instance.assign_time).seconds
+            self.instance.courier.last_complete_time = validated_data['complete_time']
+            self.instance.courier.orders_id.remove(self.instance.order_id)
+            if not self.instance.courier.orders_id:
+                self.instance.courier.status_courier = StatusCourier.FREE
+                self.instance.courier.quantity += 1
+            self.instance.courier.save()
         return validated_data

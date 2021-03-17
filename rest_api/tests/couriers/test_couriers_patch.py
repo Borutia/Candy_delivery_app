@@ -36,7 +36,7 @@ class CouriersPatchTestCase(TestCase):
         response = self.client.patch('/couriers/1', content_type='application/json')
         self.assertEqual(response.status_code, 400)
 
-    def test_with_courier_id(self):
+    def test_forbidden_courier_id(self):
         """Передача запрещенного поля courier_id, проверка статуса 400"""
         courier = {
             "courier_id": 2

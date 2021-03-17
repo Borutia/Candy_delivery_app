@@ -44,9 +44,6 @@ class OrdersAssignTestCase(TestCase):
         }
         first_response = self.client.post('/orders/assign', data=courier, content_type='application/json')
         self.assertEqual(first_response.status_code, 200)
-        courier = {
-            "courier_id": 1,
-        }
         second_response = self.client.post('/orders/assign', data=courier, content_type='application/json')
         self.assertEqual(second_response.status_code, 200)
         self.assertEqual(first_response.data, second_response.data)

@@ -41,7 +41,7 @@ class OrdersPostTestCase(TestCase):
                 }
             ]
         }
-        response = self.client.post('/orders', data=orders, content_type='application/json')
+        self.client.post('/orders', data=orders, content_type='application/json')
         response = self.client.post('/orders', data=orders, content_type='application/json')
         self.assertEqual(response.status_code, 400)
         response_data = {'validation_error': {"orders": [{"id": 1}]}}
@@ -82,7 +82,7 @@ class OrdersPostTestCase(TestCase):
         response_data = {'validation_error': {"orders": [{"id": 5}]}}
         self.assertEqual(response.data, response_data)
 
-    def test_validate_working_hours(self):
+    def test_validate_time(self):
         """Загрузка данных с невалидным временем, проверка статуса 400"""
         orders = {
             "data": [

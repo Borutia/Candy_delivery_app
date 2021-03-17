@@ -27,5 +27,5 @@ class Order(models.Model):
                                     default=StatusOrder.NEW)
     assign_time = models.DateTimeField('Время назначения', null=True)
     complete_time = models.DateTimeField('Время выполнения', null=True)
-    delivery_time = models.TimeField('Время доставки в секундах', null=True)
+    delivery_time = models.PositiveIntegerField('Время доставки в секундах', null=True)
     courier = models.ForeignKey(Courier, on_delete=models.CASCADE, null=True)

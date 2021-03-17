@@ -78,7 +78,7 @@ class CouriersPostTestCase(TestCase):
         response_data = {'validation_error': {"couriers": [{"id": 5}]}}
         self.assertEqual(response.data, response_data)
 
-    def test_validate_working_hours(self):
+    def test_validate_time(self):
         """Загрузка данных с невалидным временем, проверка статуса 400"""
         couriers = {
             "data": [

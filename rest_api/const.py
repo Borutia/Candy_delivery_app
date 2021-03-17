@@ -32,6 +32,12 @@ class StatusCourier:
     )
 
 
+class ErrorMessage:
+    """Ответы на ошибку когда экземпляр не найден"""
+    INSTANCE_NOT_FOUND = 'Instance not found'
+    DATA_NOT_FOUND = 'Data not found'
+
+
 # Грузоподъемность курьера
 LIFTING_CAPACITY = {
     'foot': 10,
