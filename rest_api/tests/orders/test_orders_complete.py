@@ -42,7 +42,7 @@ class OrdersCompleteTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_orders_complete(self):
-        """Обращение к обработчику назначения заказов, проверка статуса 200"""
+        """Обращение к обработчику завершения заказов, проверка статуса 200"""
         data = {
             "courier_id": 1,
             "order_id": 3,

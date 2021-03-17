@@ -45,5 +45,12 @@ LIFTING_CAPACITY = {
     'car': 50
 }
 
+# Коэффициент заработка
+EARNINGS_COEFFICIENT = {
+    'foot': 2,
+    'bike': 5,
+    'car': 9
+}
+
 # Формат времени
 FORMAT_TIME = '%H:%M'

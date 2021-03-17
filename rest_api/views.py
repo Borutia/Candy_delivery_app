@@ -8,6 +8,14 @@ from .const import ErrorMessage
 
 
 class Couriers(APIView):
+    def get(self, request, courier_id):
+        """API GET /couriers/$courier_id"""
+        instance = Courier.objects.filter(courier_id=courier_id).first()
+        if not instance:
+            return Response({'courier_id': ErrorMessage.INSTANCE_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = CouriersGetSerializer(instance)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def post(self, request):
         """API POST /couriers"""
         if not request.data or not request.data.get('data'):
@@ -24,10 +32,7 @@ class Couriers(APIView):
         """API PATCH /couriers/$courier_id"""
         if not request.data:
             return Response({'data': ErrorMessage.DATA_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            instance = Courier.objects.filter(courier_id=courier_id).first()
-        except Exception:
-            return Response({'courier_id': ErrorMessage.INSTANCE_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
+        instance = Courier.objects.filter(courier_id=courier_id).first()
         if not instance:
             return Response({'courier_id': ErrorMessage.INSTANCE_NOT_FOUND}, status=status.HTTP_400_BAD_REQUEST)
         serializer = CourierGetUpdateSerializer(instance, data=request.data, partial=True)

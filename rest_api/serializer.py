@@ -1,10 +1,11 @@
 from decimal import Decimal
 from rest_framework import serializers
 from django.utils import timezone
+from django.db.models import Avg, Min
 
-from .models import Courier, Order
+from .models import Courier, Order, QuantityOrders
 from .const import CourierType, LIFTING_CAPACITY, StatusCourier, StatusOrder
-from .utils import parse_time, check_cross_of_time
+from .utils import parse_time, check_cross_of_time, calculate_rating
 
 
 class BaseCourierSerializer(serializers.ModelSerializer):
@@ -50,7 +51,9 @@ class CourierCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         couriers_id = []
         for courier in validated_data['data']:
+            quantity_order = QuantityOrders.objects.create()
             courier['lifting_capacity'] = LIFTING_CAPACITY[courier['courier_type']]
+            courier['quantity'] = quantity_order
             Courier.objects.create(**courier)
             couriers_id.append({'id': courier['courier_id']})
         return couriers_id
@@ -58,6 +61,7 @@ class CourierCreateSerializer(serializers.ModelSerializer):
 
 class CourierGetUpdateSerializer(BaseCourierSerializer):
     """Serializer for get/update couriers"""
+
     class Meta:
         model = Courier
         fields = ('courier_id', 'courier_type', 'regions', 'working_hours',)
@@ -68,12 +72,12 @@ class CourierGetUpdateSerializer(BaseCourierSerializer):
             raise serializers.ValidationError('Wrong field courier_id')
         return data
 
-    def validate(self, data):
-        if not data:
+    def validate(self, validated_data):
+        if not validated_data:
             raise serializers.ValidationError('Data is empty')
-        if data.get('courier_type'):
-            data['lifting_capacity'] = LIFTING_CAPACITY[data['courier_type']]
-        return data
+        if validated_data.get('courier_type'):
+            validated_data['lifting_capacity'] = LIFTING_CAPACITY[validated_data['courier_type']]
+        return validated_data
 
 
 class BaseOrderSerializer(serializers.ModelSerializer):
@@ -148,7 +152,6 @@ class OrdersAssignSerializer(serializers.ModelSerializer):
                 if orders_id:
                     self.instance.last_complete_time = assign_time
                     self.instance.assign_time = assign_time
-                    self.instance.orders_id = orders_id
                     self.instance.status_courier = StatusCourier.BUSY
                     response['assign_time'] = assign_time
                 response['orders'] = [{'id': order_id} for order_id in orders_id]
@@ -156,7 +159,8 @@ class OrdersAssignSerializer(serializers.ModelSerializer):
                 response['orders'] = []
                 return response
         else:
-            response['orders'] = [{'id': order_id} for order_id in self.instance.orders_id]
+            response['orders'] = [{'id': order.order_id}
+                                  for order in Order.objects.filter(courier_id=self.instance.courier_id)]
             response['assign_time'] = self.instance.assign_time
         return response
 
@@ -190,9 +194,50 @@ class OrdersCompleteSerializer(serializers.ModelSerializer):
             self.instance.complete_time = validated_data['complete_time']
             self.instance.delivery_time = (validated_data['complete_time'] - self.instance.assign_time).seconds
             self.instance.courier.last_complete_time = validated_data['complete_time']
-            self.instance.courier.orders_id.remove(self.instance.order_id)
-            if not self.instance.courier.orders_id:
+            if not Order.objects.exclude(order_id=validated_data['order_id']).filter(
+                    courier_id=validated_data['courier_id'],
+                    status_order=StatusOrder.IN_PROCESS
+            ).first():
                 self.instance.courier.status_courier = StatusCourier.FREE
-                self.instance.courier.quantity += 1
+                if self.instance.courier.courier_type == CourierType.FOOT:
+                    self.instance.courier.quantity.foot += 1
+                elif self.instance.courier.courier_type == CourierType.BIKE:
+                    self.instance.courier.quantity.bike += 1
+                else:
+                    self.instance.courier.quantity.car += 1
+                self.instance.courier.quantity.save()
             self.instance.courier.save()
         return validated_data
+
+
+class CouriersGetSerializer(serializers.ModelSerializer):
+    """Serializer for get information about courier"""
+    data = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Courier
+        fields = ('data', 'courier_id', 'courier_type', 'regions', 'working_hours',)
+
+    def get_data(self, instance):
+        statistics = {}
+        if not instance.quantity.foot or not instance.quantity.bike or not instance.quantity.car:
+            query_min_of_average = Order.objects.filter(
+                courier_id=instance.courier_id,
+                status_order=StatusOrder.COMPLETE
+            ).values('region').annotate(Avg('delivery_time')).aggregate(Min('delivery_time__avg'))
+            min_of_average = query_min_of_average['delivery_time__avg__min']
+            statistics['rating'] = (60 * 60 - min(min_of_average, 60 * 60)) / (60 * 60) * 5
+            statistics['earnings'] = calculate_rating(instance.quantity.foot, 'foot') \
+                                     + calculate_rating(instance.quantity.bike, 'bike') \
+                                     + calculate_rating(instance.quantity.car, 'car')
+        else:
+            statistics['earnings'] = 0
+        return statistics
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        response = {}
+        response.update(representation['data'])
+        representation.pop('data')
+        response.update(representation)
+        return response

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from .const import FORMAT_TIME
+from .const import FORMAT_TIME, EARNINGS_COEFFICIENT
 
 
 def parse_time(time):
@@ -23,3 +23,8 @@ def check_cross_of_time(working_hours, delivery_hours):
             if (working_start <= delivery_start < working_stop) or (delivery_start <= working_start < delivery_stop):
                 return True
     return False
+
+
+def calculate_rating(quantity, courier_type):
+    """Заработок на один тип курьера"""
+    return quantity * 500 * EARNINGS_COEFFICIENT[courier_type]

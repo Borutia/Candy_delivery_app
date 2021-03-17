@@ -4,18 +4,23 @@ from django.contrib.postgres.fields import ArrayField
 from .const import CourierType, StatusOrder, StatusCourier
 
 
+class QuantityOrders(models.Model):
+    foot = models.PositiveIntegerField('Пеший курьер', default=0)
+    bike = models.PositiveIntegerField('Велокурьер', default=0)
+    car = models.PositiveIntegerField('Курьер на автомобиле', default=0)
+
+
 class Courier(models.Model):
     courier_id = models.PositiveIntegerField('id курьера', primary_key=True)
     courier_type = models.CharField('Тип курьера', max_length=4, choices=CourierType.choices)
     regions = ArrayField(models.PositiveIntegerField(), verbose_name='Районы')
     working_hours = ArrayField(models.CharField(max_length=11), verbose_name='График работы')
     lifting_capacity = models.PositiveIntegerField('Грузоподъемность курьера')
-    orders_id = ArrayField(models.PositiveIntegerField(), verbose_name='id текущих заказов', null=True)
     assign_time = models.DateTimeField('Время назначения', null=True)
     last_complete_time = models.DateTimeField('Время последней доставки', null=True)
     status_courier = models.CharField('Статус курьера', max_length=1, choices=StatusCourier.choices,
                                       default=StatusCourier.FREE)
-    quantity = models.PositiveIntegerField('Количество выполненных заказов', default=0)
+    quantity = models.ForeignKey(QuantityOrders, on_delete=models.CASCADE)
 
 
 class Order(models.Model):
