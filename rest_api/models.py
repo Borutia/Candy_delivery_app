@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
 from .const import CourierType, StatusOrder, StatusCourier
+from decimal import Decimal
 
 
 class QuantityOrders(models.Model):
@@ -17,7 +18,14 @@ class Courier(models.Model):
     regions = ArrayField(models.PositiveIntegerField(), verbose_name='Районы')
     working_hours = ArrayField(models.CharField(max_length=11),
                                verbose_name='График работы')
-    lifting_capacity = models.PositiveIntegerField('Грузоподъемность курьера')
+    lifting_capacity = models.DecimalField(
+        'Грузоподъемность курьера',
+        max_digits=4, decimal_places=2, default=Decimal(0)
+    )
+    current_weight_orders = models.DecimalField(
+        'Текущий вес назначенных заказов',
+        max_digits=4, decimal_places=2, default=Decimal(0)
+    )
     assign_time = models.DateTimeField('Время назначения', null=True)
     last_complete_time = models.DateTimeField('Время последней доставки',
                                               null=True)
@@ -25,7 +33,7 @@ class Courier(models.Model):
                                       max_length=1,
                                       choices=StatusCourier.choices,
                                       default=StatusCourier.FREE)
-    quantity = models.ForeignKey(QuantityOrders, on_delete=models.CASCADE)
+    quantity_order = models.ForeignKey(QuantityOrders, on_delete=models.CASCADE)
 
 
 class Order(models.Model):

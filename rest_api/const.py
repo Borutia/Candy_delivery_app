@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+
 class CourierType:
     """Тип курьера"""
     FOOT = 'foot'
@@ -40,9 +43,9 @@ class ErrorMessage:
 
 # Грузоподъемность курьера
 LIFTING_CAPACITY = {
-    'foot': 10,
-    'bike': 15,
-    'car': 50
+    'foot': Decimal(10),
+    'bike': Decimal(15),
+    'car': Decimal(50)
 }
 
 # Коэффициент заработка

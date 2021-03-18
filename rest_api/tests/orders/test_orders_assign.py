@@ -62,7 +62,8 @@ class OrdersAssignTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         response_orders = [{"id": 3}, {"id": 5}]
         self.assertContains(response, 'assign_time')
-        self.assertEqual(response.data['orders'], response_orders)
+        response = sorted(response.data['orders'], key=lambda dct: dct['id'])
+        self.assertEqual(response, response_orders)
 
     def test_idempotence(self):
         """
@@ -134,3 +135,68 @@ class OrdersAssignTestCase(TestCase):
         second_orders = [order_id['id']
                          for order_id in second_response.data['orders']]
         self.assertEqual(list(set(first_orders) & set(second_orders)), [])
+
+    def test_delete_one_order(self):
+        """
+        Обращение к обработчику, проверка удаления одного заказа
+        из ответа после доставки этого заказа,
+        проверка статуса 200
+        """
+        courier = {
+            "courier_id": 1,
+        }
+        self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        data = {
+            "courier_id": 1,
+            "order_id": 3,
+            "complete_time": "2121-03-17T09:53:11.649422Z"
+        }
+        self.client.post(
+            '/orders/complete',
+            data=data,
+            content_type='application/json'
+        )
+        response = self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        response_orders = [{"id": 5}]
+        self.assertEqual(response.data['orders'], response_orders)
+
+    def test_change_weight_courier(self):
+        """
+        Обращение к обработчику, проверка удаления одного заказа
+        из ответа после изменения типа курьера,
+        проверка статуса 200
+        """
+        courier = {
+            "courier_id": 6,
+        }
+        self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        data = {
+            "courier_type": "foot"
+        }
+        self.client.patch(
+            '/couriers/6',
+            data=data,
+            content_type='application/json'
+        )
+        response = self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        response_orders = [{'id': 3}, {'id': 5}]
+        response = sorted(response.data['orders'], key=lambda dct: dct['id'])
+        self.assertEqual(response, response_orders)

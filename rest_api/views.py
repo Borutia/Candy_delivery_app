@@ -66,7 +66,7 @@ class Couriers(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-        serializer = CourierGetUpdateSerializer(
+        serializer = CourierUpdateSerializer(
             instance,
             data=request.data,
             partial=True
@@ -113,8 +113,8 @@ class Orders(APIView):
 
 
 class OrdersAssign(APIView):
-    """API POST /orders/assign"""
     def post(self, request):
+        """API POST /orders/assign"""
         if not request.data:
             return Response(
                 {
@@ -155,8 +155,8 @@ class OrdersAssign(APIView):
 
 
 class OrdersComplete(APIView):
-    """API POST /orders/complete"""
     def post(self, request):
+        """API POST /orders/complete"""
         if not request.data:
             return Response(
                 {

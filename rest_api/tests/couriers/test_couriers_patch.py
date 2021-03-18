@@ -1,3 +1,5 @@
+import json
+
 from django.test import TestCase
 
 
@@ -8,7 +10,7 @@ class CouriersPatchTestCase(TestCase):
             "data": [
                 {
                     "courier_id": 1,
-                    "courier_type": "foot",
+                    "courier_type": "bike",
                     "regions": [1, 12, 22],
                     "working_hours": ["11:35-14:05", "09:00-11:00"]
                 }
@@ -17,6 +19,14 @@ class CouriersPatchTestCase(TestCase):
         self.client.post(
             '/couriers',
             data=couriers,
+            content_type='application/json'
+        )
+        with open('rest_api/tests/orders/good_orders.json', 'r',
+                  encoding='utf-8') as file:
+            self.orders = json.load(file)
+        self.client.post(
+            '/orders',
+            data=self.orders,
             content_type='application/json'
         )
 
@@ -33,7 +43,7 @@ class CouriersPatchTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         response_data = {
             "courier_id": 1,
-            "courier_type": "foot",
+            "courier_type": "bike",
             "regions": [1, 12, 22],
             "working_hours": ["09:00-12:00"]
         }
@@ -84,3 +94,109 @@ class CouriersPatchTestCase(TestCase):
             content_type='application/json'
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_change_courier_type(self):
+        """
+        Обращение к обработчику, назначение заказов, смена типа курьера,
+        проверка удаляения не подходящих заказов проверка статуса 200
+        """
+        courier = {
+            "courier_id": 1,
+        }
+        response = self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        response_orders = [{"id": 3}, {"id": 4}, {"id": 5}]
+        response = sorted(response.data['orders'], key=lambda dct: dct['id'])
+        self.assertEqual(response, response_orders)
+        courier_type = {
+            "courier_type": "foot",
+        }
+        response = self.client.patch(
+            '/couriers/1',
+            data=courier_type,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        response = self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        response_orders = [{"id": 3}, {"id": 5}]
+        response = sorted(response.data['orders'], key=lambda dct: dct['id'])
+        self.assertEqual(response, response_orders)
+
+    def test_change_regions(self):
+        """
+        Обращение к обработчику, назначение заказов, смена районов,
+        проверка удаляения не подходящих заказов проверка статуса 200
+        """
+        courier = {
+            "courier_id": 1,
+        }
+        response = self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        response_orders = [{"id": 3}, {"id": 4}, {"id": 5}]
+        response = sorted(response.data['orders'], key=lambda dct: dct['id'])
+        self.assertEqual(response, response_orders)
+        regions = {
+            "regions": [1],
+        }
+        response = self.client.patch(
+            '/couriers/1',
+            data=regions,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        response = self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        response_orders = [{"id": 4}]
+        self.assertEqual(response.data['orders'], response_orders)
+
+    def test_change_working_hours(self):
+        """
+        Обращение к обработчику, назначение заказов, смена графика работы,
+        проверка удаляения не подходящих заказов проверка статуса 200
+        """
+        courier = {
+            "courier_id": 1,
+        }
+        response = self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        response_orders = [{"id": 3}, {"id": 4}, {"id": 5}]
+        response = sorted(response.data['orders'], key=lambda dct: dct['id'])
+        self.assertEqual(response, response_orders)
+        regions = {
+            "working_hours": ["09:00-14:00"]
+        }
+        response = self.client.patch(
+            '/couriers/1',
+            data=regions,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        response = self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        response_orders = [{"id": 4}]
+        self.assertEqual(response.data['orders'], response_orders)

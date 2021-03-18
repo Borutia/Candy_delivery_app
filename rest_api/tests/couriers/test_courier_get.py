@@ -22,6 +22,7 @@ class CouriersGetTestCase(TestCase):
             data=self.couriers,
             content_type='application/json'
         )
+        self.courier = 1
         courier = {
             "courier_id": 1,
         }
@@ -31,7 +32,7 @@ class CouriersGetTestCase(TestCase):
             content_type='application/json'
         )
         data = {
-            "courier_id": 1,
+            "courier_id": self.courier,
             "order_id": 3,
             "complete_time": "2121-03-17T09:53:11.649422Z"
         }
@@ -44,7 +45,47 @@ class CouriersGetTestCase(TestCase):
     def test_wrong_courier_id(self):
         """Запрос с несуществующим courier_id, проверка статуса 400"""
         response = self.client.get(
-            '/couriers/10',
+            '/couriers/100',
             content_type='application/json'
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_information_courier_rating(self):
+        """
+        Обращение к обработчику, проверка информации о курьере
+        без рейтинга и с 0 заработком,
+        проверка статуса 200
+        """
+        response = self.client.get(
+            f'/couriers/{self.courier}',
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'earnings')
+        self.assertNotContains(response, 'rating')
+        self.assertEqual(response.data['earnings'], 0)
+
+    def test_information_courier_earnings(self):
+        """
+        Обращение к обработчику, проверка информации о курьере
+        c рейтингом и заработком,
+        проверка статуса 200
+        """
+        data = {
+            "courier_id": self.courier,
+            "order_id": 5,
+            "complete_time": "2121-03-17T09:53:11.649422Z"
+        }
+        self.client.post(
+            '/orders/complete',
+            data=data,
+            content_type='application/json'
+        )
+        response = self.client.get(
+            f'/couriers/{self.courier}',
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'earnings')
+        self.assertContains(response, 'rating')
+        self.assertEqual(response.data['earnings'], 1000)

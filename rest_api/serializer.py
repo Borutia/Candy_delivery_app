@@ -61,15 +61,14 @@ class CourierCreateSerializer(serializers.ModelSerializer):
             courier['lifting_capacity'] = LIFTING_CAPACITY[
                 courier['courier_type']
             ]
-            courier['quantity'] = quantity_order
+            courier['quantity_order'] = quantity_order
             Courier.objects.create(**courier)
             couriers_id.append({'id': courier['courier_id']})
         return couriers_id
 
 
-class CourierGetUpdateSerializer(BaseCourierSerializer):
-    """Serializer for get/update couriers"""
-
+class CourierUpdateSerializer(BaseCourierSerializer):
+    """Serializer for update couriers"""
     class Meta:
         model = Courier
         fields = ('courier_id', 'courier_type', 'regions', 'working_hours',)
@@ -84,9 +83,67 @@ class CourierGetUpdateSerializer(BaseCourierSerializer):
         if not validated_data:
             raise serializers.ValidationError('Data is empty')
         if validated_data.get('courier_type'):
-            validated_data['lifting_capacity'] = LIFTING_CAPACITY[
+            self.instance.lifting_capacity = LIFTING_CAPACITY[
                 validated_data['courier_type']
             ]
+            if self.instance.status_courier == StatusCourier.BUSY:
+                if self.instance.current_weight_orders > \
+                        self.instance.lifting_capacity:
+                    for order in Order.objects.filter(
+                        courier_id=self.instance.courier_id,
+                        status_order=StatusOrder.IN_PROCESS,
+                    ).order_by('-weight'):
+                        order.status_order = StatusOrder.NEW
+                        order.courier = None
+                        order.assign_time = None
+                        self.instance.current_weight_orders -= order.weight
+                        if self.instance.current_weight_orders <= \
+                                self.instance.lifting_capacity:
+                            order.save()
+                            break
+                        order.save()
+        if validated_data.get('working_hours'):
+            self.instance.working_hours = validated_data['working_hours']
+            if self.instance.status_courier == StatusCourier.BUSY:
+                for order in Order.objects.filter(
+                    courier_id=self.instance.courier_id,
+                    status_order=StatusOrder.IN_PROCESS
+                ):
+                    if not check_cross_of_time(
+                            self.instance.working_hours,
+                            order.delivery_hours
+                    ):
+                        order.status_order = StatusOrder.NEW
+                        order.courier = None
+                        order.assign_time = None
+                        self.instance.current_weight_orders -= order.weight
+                        order.save()
+        if validated_data.get('regions'):
+            self.instance.regions = validated_data['regions']
+            if self.instance.status_courier == StatusCourier.BUSY:
+                for order in Order.objects.filter(
+                    courier_id=self.instance.courier_id,
+                    status_order=StatusOrder.IN_PROCESS,
+                ):
+                    if order not in self.instance.regions:
+                        order.status_order = StatusOrder.NEW
+                        order.courier = None
+                        order.assign_time = None
+                        self.instance.current_weight_orders -= order.weight
+                        order.save()
+        if not Order.objects.filter(
+                courier_id=self.instance.courier_id,
+                status_order=StatusOrder.IN_PROCESS
+        ).first():
+            self.instance.status_courier = StatusCourier.FREE
+            self.instance.current_weight_orders = 0
+            if self.instance.courier_type == CourierType.FOOT:
+                self.instance.quantity_order.foot += 1
+            elif self.instance.courier_type == CourierType.BIKE:
+                self.instance.quantity_order.bike += 1
+            else:
+                self.instance.quantity_order.car += 1
+            self.instance.quantity_order.save()
         return validated_data
 
 
@@ -157,7 +214,7 @@ class OrdersAssignSerializer(serializers.ModelSerializer):
             if new_orders:
                 orders_id = []
                 assign_time = timezone.now()
-                current_weight = 0
+                current_weight = Decimal(0)
                 for order in new_orders:
                     if current_weight + order.weight >\
                             self.instance.lifting_capacity:
@@ -175,8 +232,9 @@ class OrdersAssignSerializer(serializers.ModelSerializer):
                 if orders_id:
                     self.instance.last_complete_time = assign_time
                     self.instance.assign_time = assign_time
+                    self.instance.current_weight_orders = current_weight
                     self.instance.status_courier = StatusCourier.BUSY
-                    response['assign_time'] = assign_time
+                response['assign_time'] = assign_time
                 response['orders'] = [{'id': order_id}
                                       for order_id in orders_id]
             else:
@@ -185,7 +243,8 @@ class OrdersAssignSerializer(serializers.ModelSerializer):
         else:
             response['orders'] = [
                 {'id': order.order_id} for order in Order.objects.filter(
-                    courier_id=self.instance.courier_id
+                    courier_id=self.instance.courier_id,
+                    status_order=StatusOrder.IN_PROCESS
                 )
             ]
             response['assign_time'] = self.instance.assign_time
@@ -227,6 +286,7 @@ class OrdersCompleteSerializer(serializers.ModelSerializer):
                                            - self.instance.assign_time).seconds
             self.instance.courier.last_complete_time = \
                 validated_data['complete_time']
+            self.instance.courier.current_weight_orders -= self.instance.weight
             if not Order.objects.exclude(
                     order_id=validated_data['order_id']
             ).filter(
@@ -234,13 +294,14 @@ class OrdersCompleteSerializer(serializers.ModelSerializer):
                 status_order=StatusOrder.IN_PROCESS
             ).first():
                 self.instance.courier.status_courier = StatusCourier.FREE
+                self.instance.courier.current_weight_orders = Decimal(0)
                 if self.instance.courier.courier_type == CourierType.FOOT:
-                    self.instance.courier.quantity.foot += 1
+                    self.instance.courier.quantity_order.foot += 1
                 elif self.instance.courier.courier_type == CourierType.BIKE:
-                    self.instance.courier.quantity.bike += 1
+                    self.instance.courier.quantity_order.bike += 1
                 else:
-                    self.instance.courier.quantity.car += 1
-                self.instance.courier.quantity.save()
+                    self.instance.courier.quantity_order.car += 1
+                self.instance.courier.quantity_order.save()
             self.instance.courier.save()
         return validated_data
 
@@ -256,23 +317,27 @@ class CouriersGetSerializer(serializers.ModelSerializer):
 
     def get_data(self, instance):
         statistics = {}
-        if not instance.quantity.foot \
-                or not instance.quantity.bike or not instance.quantity.car:
+        if instance.quantity_order.foot != 0 \
+                or instance.quantity_order.bike != 0 \
+                or instance.quantity_order.car != 0:
             query_min_of_average = Order.objects.filter(
                 courier_id=instance.courier_id,
                 status_order=StatusOrder.COMPLETE
             ).values('region').annotate(
                 Avg('delivery_time')
             ).aggregate(Min('delivery_time__avg'))
-            min_of_average = query_min_of_average['delivery_time__avg__min']
-            statistics['rating'] = (60 * 60 - min(
+            # уточняю по развозу
+            min_of_average = Decimal(
+                query_min_of_average['delivery_time__avg__min']
+            )
+            statistics['rating'] = Decimal((60 * 60 - min(
                 min_of_average, 60 * 60
-            )) / (60 * 60) * 5
+            )) / (60 * 60) * 5).quantize(Decimal('1.11'))
             statistics['earnings'] = calculate_rating(
-                instance.quantity.foot, 'foot'
+                instance.quantity_order.foot, 'foot'
             ) + calculate_rating(
-                instance.quantity.bike, 'bike'
-            ) + calculate_rating(instance.quantity.car, 'car')
+                instance.quantity_order.bike, 'bike'
+            ) + calculate_rating(instance.quantity_order.car, 'car')
         else:
             statistics['earnings'] = 0
         return statistics
