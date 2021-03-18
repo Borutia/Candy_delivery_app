@@ -220,4 +220,3 @@ class CouriersPostTestCase(TestCase):
             }
         }
         self.assertEqual(response.data, response_data)
-
