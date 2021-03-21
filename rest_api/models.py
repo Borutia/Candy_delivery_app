@@ -33,7 +33,8 @@ class Courier(models.Model):
                                       max_length=1,
                                       choices=StatusCourier.choices,
                                       default=StatusCourier.FREE)
-    quantity_order = models.ForeignKey(QuantityOrders, on_delete=models.CASCADE)
+    quantity_order = models.ForeignKey(QuantityOrders,
+                                       on_delete=models.CASCADE)
 
 
 class Order(models.Model):

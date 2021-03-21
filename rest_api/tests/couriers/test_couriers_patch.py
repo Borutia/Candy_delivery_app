@@ -13,6 +13,17 @@ class CouriersPatchTestCase(TestCase):
                     "courier_type": "bike",
                     "regions": [1, 12, 22],
                     "working_hours": ["11:35-14:05", "09:00-11:00"]
+                },
+                {
+                    "courier_id": 7,
+                    "courier_type": "foot",
+                    "regions": [
+                        50,
+                        51
+                    ],
+                    "working_hours": [
+                        "09:00-18:00"
+                    ]
                 }
             ]
         }
@@ -98,7 +109,7 @@ class CouriersPatchTestCase(TestCase):
     def test_change_courier_type(self):
         """
         Обращение к обработчику, назначение заказов, смена типа курьера,
-        проверка удаляения не подходящих заказов проверка статуса 200
+        проверка удаляения не подходящих заказов, проверка статуса 200
         """
         courier = {
             "courier_id": 1,
@@ -134,7 +145,7 @@ class CouriersPatchTestCase(TestCase):
     def test_change_regions(self):
         """
         Обращение к обработчику, назначение заказов, смена районов,
-        проверка удаляения не подходящих заказов проверка статуса 200
+        проверка удаляения не подходящих заказов, проверка статуса 200
         """
         courier = {
             "courier_id": 1,
@@ -169,7 +180,7 @@ class CouriersPatchTestCase(TestCase):
     def test_change_working_hours(self):
         """
         Обращение к обработчику, назначение заказов, смена графика работы,
-        проверка удаляения не подходящих заказов проверка статуса 200
+        проверка удаляения не подходящих заказов, проверка статуса 200
         """
         courier = {
             "courier_id": 1,
@@ -183,12 +194,12 @@ class CouriersPatchTestCase(TestCase):
         response_orders = [{"id": 3}, {"id": 4}, {"id": 5}]
         response = sorted(response.data['orders'], key=lambda dct: dct['id'])
         self.assertEqual(response, response_orders)
-        regions = {
+        working_hours = {
             "working_hours": ["09:00-14:00"]
         }
         response = self.client.patch(
             '/couriers/1',
-            data=regions,
+            data=working_hours,
             content_type='application/json'
         )
         self.assertEqual(response.status_code, 200)
@@ -200,3 +211,74 @@ class CouriersPatchTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         response_orders = [{"id": 4}]
         self.assertEqual(response.data['orders'], response_orders)
+
+    def test_delivery_delete_all_orders(self):
+        """
+        Обращение к обработчику, назначение заказов, смена района,
+        удаления все активных заказов, проверка заработной платы
+        """
+        courier = {
+            "courier_id": 1,
+        }
+        self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        regions = {
+            "regions": [100],
+        }
+        self.client.patch(
+            '/couriers/1',
+            data=regions,
+            content_type='application/json'
+        )
+        response = self.client.get(
+            f'/couriers/1',
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'earnings')
+        self.assertNotContains(response, 'rating')
+        self.assertEqual(response.data['earnings'], 0)
+
+    def test_delivery_complete_one_order(self):
+        """
+        Обращение к обработчику, назначение заказов, смена района,
+        оставить один активных заказов, подтвержить его,
+        проверка заработной платы и наличие рейтинга
+        """
+        courier = {
+            "courier_id": 7,
+        }
+        self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        regions = {
+            "regions": [50],
+        }
+        self.client.patch(
+            '/couriers/7',
+            data=regions,
+            content_type='application/json'
+        )
+        data = {
+            "courier_id": 7,
+            "order_id": 6,
+            "complete_time": "2121-03-17T09:53:11.649422Z"
+        }
+        self.client.post(
+            '/orders/complete',
+            data=data,
+            content_type='application/json'
+        )
+        response = self.client.get(
+            f'/couriers/7',
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'earnings')
+        self.assertContains(response, 'rating')
+        self.assertEqual(response.data['earnings'], 1000)

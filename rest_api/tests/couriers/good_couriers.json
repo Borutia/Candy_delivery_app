@@ -66,6 +66,17 @@
             "working_hours": [
                 "09:00-18:00"
             ]
+        },
+        {
+            "courier_id": 7,
+            "courier_type": "foot",
+            "regions": [
+                50,
+                51
+            ],
+            "working_hours": [
+                "09:00-18:00"
+            ]
         }
     ]
 }
