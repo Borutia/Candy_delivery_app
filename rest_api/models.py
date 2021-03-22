@@ -1,8 +1,8 @@
-from django.db import models
-from django.contrib.postgres.fields import ArrayField
-
-from .const import CourierType, StatusOrder, StatusCourier
 from decimal import Decimal
+
+from django.db import models
+
+from .const import CourierType, StatusOrder, StatusCourier, FORMAT_TIME
 
 
 class QuantityOrders(models.Model):
@@ -15,9 +15,6 @@ class Courier(models.Model):
     courier_id = models.PositiveIntegerField('id курьера', primary_key=True)
     courier_type = models.CharField('Тип курьера', max_length=4,
                                     choices=CourierType.choices)
-    regions = ArrayField(models.PositiveIntegerField(), verbose_name='Районы')
-    working_hours = ArrayField(models.CharField(max_length=11),
-                               verbose_name='График работы')
     lifting_capacity = models.DecimalField(
         'Грузоподъемность курьера',
         max_digits=4, decimal_places=2, default=Decimal(0)
@@ -33,16 +30,35 @@ class Courier(models.Model):
                                       max_length=1,
                                       choices=StatusCourier.choices,
                                       default=StatusCourier.FREE)
-    quantity_order = models.ForeignKey(QuantityOrders,
-                                       on_delete=models.CASCADE)
+    complete_order_in_delivery = models.PositiveIntegerField(
+        'Количество доставленных заказов в текущем развозе',
+        default=0
+    )
+    quantity_orders = models.ForeignKey(QuantityOrders,
+                                        on_delete=models.CASCADE)
+
+
+class WorkingHours(models.Model):
+    start_time = models.TimeField('Начало работы')
+    stop_time = models.TimeField('Конец работы')
+    courier = models.ForeignKey(Courier, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return '{}-{}'.format(
+            self.start_time.strftime(FORMAT_TIME),
+            self.stop_time.strftime(FORMAT_TIME)
+        )
+
+
+class Regions(models.Model):
+    region = models.PositiveIntegerField('Район')
+    courier = models.ForeignKey(Courier, on_delete=models.CASCADE)
 
 
 class Order(models.Model):
     order_id = models.PositiveIntegerField('id заказа', primary_key=True)
     weight = models.DecimalField('Вес', max_digits=4, decimal_places=2)
     region = models.PositiveIntegerField('Район')
-    delivery_hours = ArrayField(models.CharField(max_length=11),
-                                verbose_name='Промежутки для доставки')
     status_order = models.CharField('Статус заказа',
                                     max_length=1,
                                     choices=StatusOrder.choices,
@@ -52,3 +68,9 @@ class Order(models.Model):
     delivery_time = models.PositiveIntegerField('Время доставки в секундах',
                                                 null=True)
     courier = models.ForeignKey(Courier, on_delete=models.CASCADE, null=True)
+
+
+class DeliveryHours(models.Model):
+    start_time = models.TimeField('Начало для доставки')
+    stop_time = models.TimeField('Конец для доставки')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)

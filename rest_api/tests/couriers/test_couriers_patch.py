@@ -256,14 +256,6 @@ class CouriersPatchTestCase(TestCase):
             data=courier,
             content_type='application/json'
         )
-        regions = {
-            "regions": [50],
-        }
-        self.client.patch(
-            '/couriers/7',
-            data=regions,
-            content_type='application/json'
-        )
         data = {
             "courier_id": 7,
             "order_id": 6,
@@ -272,6 +264,14 @@ class CouriersPatchTestCase(TestCase):
         self.client.post(
             '/orders/complete',
             data=data,
+            content_type='application/json'
+        )
+        regions = {
+            "regions": [50],
+        }
+        self.client.patch(
+            '/couriers/7',
+            data=regions,
             content_type='application/json'
         )
         response = self.client.get(
