@@ -115,8 +115,8 @@ class CouriersPostTestCase(TestCase):
         }
         self.assertEqual(response.data, response_data)
 
-    def test_empty_field(self):
-        """Загрузка данных с пустым полем, проверка статуса 400"""
+    def test_empty_region(self):
+        """Загрузка данных с пустым полем regions, проверка статуса 400"""
         couriers = {
             "data": [
                 {
@@ -124,6 +124,35 @@ class CouriersPostTestCase(TestCase):
                     "courier_type": "foot",
                     "regions": [],
                     "working_hours": ["11:35-14:05", "09:00-11:00"]
+                }
+            ]
+        }
+        response = self.client.post(
+            '/couriers',
+            data=couriers,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        response_data = {
+            'validation_error': {
+                "couriers": [
+                    {"id": 5}
+                ]
+            }
+        }
+        self.assertEqual(response.data, response_data)
+
+    def test_empty_working_hours(self):
+        """
+        Загрузка данных с пустым полем working_hours, проверка статуса 400
+        """
+        couriers = {
+            "data": [
+                {
+                    "courier_id": 5,
+                    "courier_type": "foot",
+                    "regions": [1],
+                    "working_hours": []
                 }
             ]
         }

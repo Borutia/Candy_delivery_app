@@ -89,3 +89,36 @@ class CouriersGetTestCase(TestCase):
         self.assertContains(response, 'earnings')
         self.assertContains(response, 'rating')
         self.assertEqual(response.data['earnings'], 1000)
+
+    def test_earnings_after_change_courier_type(self):
+        """
+        Обращение к обработчику, проверка информации о курьере
+        c рейтингом и заработком после смены типа курьера,
+        проверка статуса 200
+        """
+        courier = {
+            "courier_type": "car",
+        }
+        self.client.patch(
+            f'/couriers/{self.courier}',
+            data=courier,
+            content_type='application/json'
+        )
+        data = {
+            "courier_id": self.courier,
+            "order_id": 5,
+            "complete_time": "2121-03-17T09:53:11.649422Z"
+        }
+        self.client.post(
+            '/orders/complete',
+            data=data,
+            content_type='application/json'
+        )
+        response = self.client.get(
+            f'/couriers/{self.courier}',
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'earnings')
+        self.assertContains(response, 'rating')
+        self.assertEqual(response.data['earnings'], 1000)

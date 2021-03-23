@@ -34,9 +34,9 @@ def check_cross_of_time(working_hours, delivery_hours):
     в которые клиенту удобно принять заказ
     """
     for delivery_time in delivery_hours:
+        delivery_start, delivery_stop = delivery_time
         for working_time in working_hours:
             working_start, working_stop = working_time
-            delivery_start, delivery_stop = delivery_time
             if (working_start <= delivery_start < working_stop) \
                     or (delivery_start <= working_start < delivery_stop):
                 return True

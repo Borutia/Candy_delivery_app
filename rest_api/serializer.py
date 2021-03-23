@@ -2,13 +2,12 @@ from decimal import Decimal
 
 from rest_framework import serializers
 from django.utils import timezone
-from django.db.models import Avg, Min
 
 from .models import WorkingHours, QuantityOrders, Courier, Order, \
     DeliveryHours, Regions
 from .const import CourierType, LIFTING_CAPACITY, StatusCourier, StatusOrder
-from .utils import parse_time, check_cross_of_time, calculate_rating, \
-    get_correct_hours, get_regions
+from .utils import parse_time, check_cross_of_time, get_correct_hours, \
+    get_regions
 
 
 class WorkingHoursSerializer(serializers.ModelSerializer):
@@ -19,7 +18,7 @@ class WorkingHoursSerializer(serializers.ModelSerializer):
 
 
 class RegionsSerializer(serializers.ModelSerializer):
-    """"""
+    """Serializer for regions"""
     class Meta:
         model = Regions
         fields = ('region',)
@@ -93,9 +92,6 @@ class CourierCreateSerializer(serializers.ModelSerializer):
 
 class CourierUpdateSerializer(BaseCourierSerializer):
     """Serializer for update couriers"""
-    working_hours = serializers.SerializerMethodField()
-    regions = serializers.SerializerMethodField()
-
     class Meta:
         model = Courier
         fields = ('courier_id', 'courier_type', 'regions', 'working_hours',)
@@ -104,12 +100,10 @@ class CourierUpdateSerializer(BaseCourierSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if 'working_hours' in self.initial_data:
-            super().validate_working_hours(self.initial_data['working_hours'])
             self.initial_data['working_hours'] = get_correct_hours(
                 self.initial_data['working_hours']
             )
         if 'regions' in self.initial_data:
-            super().validate_regions(self.initial_data['regions'])
             self.initial_data['regions'] = get_regions(
                 self.initial_data['regions']
             )
@@ -119,15 +113,17 @@ class CourierUpdateSerializer(BaseCourierSerializer):
             raise serializers.ValidationError('Wrong field courier_id')
         return data
 
-    def get_working_hours(self, data):
-        return [str(hours) for hours in WorkingHours.objects.filter(
-            courier_id=self.instance.courier_id
-        )]
-
-    def get_regions(self, data):
-        return [obj.region for obj in Regions.objects.filter(
-            courier_id=self.instance.courier_id
-        )]
+    def to_representation(self, instance):
+        data = {
+            'courier_id': self.instance.courier_id,
+            'courier_type': self.instance.courier_type,
+            'regions': Regions.get_regions(self.instance.courier_id),
+            'working_hours': [
+                str(hours) for hours in WorkingHours.objects.filter(
+                    courier_id=self.instance.courier_id)
+            ]
+        }
+        return data
 
     def update(self, instance, validated_data):
         if not self.initial_data:
@@ -136,6 +132,7 @@ class CourierUpdateSerializer(BaseCourierSerializer):
             self.instance.lifting_capacity = LIFTING_CAPACITY[
                 validated_data['courier_type']
             ]
+            self.instance.courier_type = validated_data['courier_type']
             if self.instance.status_courier == StatusCourier.BUSY:
                 if self.instance.current_weight_orders > \
                         self.instance.lifting_capacity:
@@ -156,7 +153,6 @@ class CourierUpdateSerializer(BaseCourierSerializer):
             WorkingHours.objects.filter(
                 courier_id=self.instance.courier_id
             ).delete()
-            # test delete
             for time in self.initial_data['working_hours']:
                 self.instance.workinghours_set.create(**time)
             if self.instance.status_courier == StatusCourier.BUSY:
@@ -164,14 +160,13 @@ class CourierUpdateSerializer(BaseCourierSerializer):
                     courier_id=self.instance.courier_id,
                     status_order=StatusOrder.IN_PROCESS
                 ):
-                    if not check_cross_of_time(
-                            [(hours.start_time, hours.stop_time)
-                             for hours in WorkingHours.objects.filter(
-                                courier_id=self.instance.courier_id)],
-                            [(hours.start_time, hours.stop_time)
-                             for hours in DeliveryHours.objects.filter(
-                                order_id=order.order_id)]
-                    ):
+                    working_hours = WorkingHours.get_working_hours(
+                        self.instance.courier_id
+                    )
+                    delivery_hours = DeliveryHours.get_delivery_hours(
+                        order.order_id
+                    )
+                    if not check_cross_of_time(working_hours, delivery_hours):
                         order.status_order = StatusOrder.NEW
                         order.courier = None
                         order.assign_time = None
@@ -184,9 +179,7 @@ class CourierUpdateSerializer(BaseCourierSerializer):
             for region in self.initial_data['regions']:
                 self.instance.regions_set.create(**region)
             if self.instance.status_courier == StatusCourier.BUSY:
-                regions = [obj.region for obj in Regions.objects.filter(
-                    courier_id=self.instance.courier_id
-                )]
+                regions = Regions.get_regions(self.instance.courier_id)
                 for order in Order.objects.exclude(
                     region__in=regions
                 ).filter(
@@ -204,17 +197,22 @@ class CourierUpdateSerializer(BaseCourierSerializer):
                     status_order=StatusOrder.IN_PROCESS
             ).first():
                 self.instance.status_courier = StatusCourier.FREE
+                self.instance.assign_time = None
+                self.instance.last_complete_time = None
                 if self.instance.complete_order_in_delivery != 0:
-                    self.instance.assign_time = None
-                    self.instance.last_complete_time = None
+                    self.instance.complete_order_in_delivery = 0
                     self.instance.current_weight_orders = Decimal(0)
-                    if self.instance.courier_type == CourierType.FOOT:
+                    if self.instance.courier_type_in_delivery \
+                            == CourierType.FOOT:
                         self.instance.quantity_orders.foot += 1
-                    elif self.instance.courier_type == CourierType.BIKE:
+                    elif self.instance.courier_type_in_delivery \
+                            == CourierType.BIKE:
                         self.instance.quantity_orders.bike += 1
                     else:
                         self.instance.quantity_orders.car += 1
                     self.instance.quantity_orders.save()
+                    self.instance.courier_type_in_delivery = None
+        self.instance.save()
         return self.instance
 
 
@@ -296,52 +294,7 @@ class OrdersAssignSerializer(serializers.ModelSerializer):
 
     def validate(self, validated_data):
         response = {}
-        if self.instance.status_courier == StatusCourier.FREE:
-            regions = [obj.region for obj in Regions.objects.filter(
-                courier_id=self.instance.courier_id
-            )]
-            new_orders = Order.objects.filter(
-                status_order=StatusOrder.NEW,
-                region__in=regions,
-                weight__lte=self.instance.lifting_capacity
-            ).order_by('weight')
-            if new_orders:
-                orders_id = []
-                assign_time = timezone.now()
-                current_weight = Decimal(0)
-                for order in new_orders:
-                    if current_weight + order.weight >\
-                            self.instance.lifting_capacity:
-                        break
-                    if check_cross_of_time(
-                        [(hours.start_time, hours.stop_time)
-                         for hours in WorkingHours.objects.filter(
-                            courier_id=self.instance.courier_id)],
-                        [(hours.start_time, hours.stop_time)
-                         for hours in DeliveryHours.objects.filter(
-                            order_id=order.order_id)]
-                    ):
-                        order.assign_time = assign_time
-                        order.status_order = StatusOrder.IN_PROCESS
-                        order.courier_id = self.instance
-                        orders_id.append(order.order_id)
-                        order.save()
-                        current_weight += order.weight
-                if orders_id:
-                    self.instance.last_complete_time = assign_time
-                    self.instance.assign_time = assign_time
-                    self.instance.current_weight_orders = current_weight
-                    self.instance.status_courier = StatusCourier.BUSY
-                response['assign_time'] = assign_time
-                response['orders'] = [
-                    {
-                        'id': order_id
-                    } for order_id in orders_id
-                ]
-            else:
-                response['orders'] = []
-                return response
-        else:
+        if self.instance.status_courier == StatusCourier.BUSY:
             response['orders'] = [
                 {
                     'id': order.order_id
@@ -351,6 +304,51 @@ class OrdersAssignSerializer(serializers.ModelSerializer):
                 )
             ]
             response['assign_time'] = self.instance.assign_time
+            return response
+        regions = Regions.get_regions(self.instance.courier_id)
+        new_orders = Order.objects.filter(
+            status_order=StatusOrder.NEW,
+            region__in=regions,
+            weight__lte=self.instance.lifting_capacity
+        ).order_by('weight')
+        if new_orders:
+            orders_id = []
+            assign_time = timezone.now()
+            current_weight = Decimal(0)
+            working_hours = WorkingHours.get_working_hours(
+                self.instance.courier_id
+            )
+            for order in new_orders:
+                if current_weight + order.weight > \
+                        self.instance.lifting_capacity:
+                    break
+                delivery_hours = DeliveryHours.get_delivery_hours(
+                    order.order_id
+                )
+                if check_cross_of_time(working_hours, delivery_hours):
+                    order.assign_time = assign_time
+                    order.status_order = StatusOrder.IN_PROCESS
+                    order.courier_id = self.instance
+                    orders_id.append(order.order_id)
+                    order.save()
+                    current_weight += order.weight
+            if orders_id:
+                self.instance.last_complete_time = assign_time
+                self.instance.assign_time = assign_time
+                self.instance.current_weight_orders = current_weight
+                self.instance.status_courier = StatusCourier.BUSY
+                self.instance.courier_type_in_delivery = \
+                    self.instance.courier_type
+                response['assign_time'] = assign_time
+                response['orders'] = [
+                    {
+                        'id': order_id
+                    } for order_id in orders_id
+                ]
+            else:
+                response['orders'] = []
+        else:
+            response['orders'] = []
         return response
 
 
@@ -403,14 +401,17 @@ class OrdersCompleteSerializer(serializers.ModelSerializer):
                 self.instance.courier.current_weight_orders = Decimal(0)
                 self.instance.courier.complete_order_in_delivery = 0
                 self.instance.courier.last_complete_time = None
-                self.instance.assign_time = None
-                if self.instance.courier.courier_type == CourierType.FOOT:
+                self.instance.courier.assign_time = None
+                if self.instance.courier.courier_type_in_delivery \
+                        == CourierType.FOOT:
                     self.instance.courier.quantity_orders.foot += 1
-                elif self.instance.courier.courier_type == CourierType.BIKE:
+                elif self.instance.courier.courier_type_in_delivery \
+                        == CourierType.BIKE:
                     self.instance.courier.quantity_orders.bike += 1
                 else:
                     self.instance.courier.quantity_orders.car += 1
                 self.instance.courier.quantity_orders.save()
+                self.instance.courier_type_in_delivery = None
             self.instance.courier.save()
         return validated_data
 
@@ -431,38 +432,22 @@ class CouriersGetSerializer(serializers.ModelSerializer):
         if instance.quantity_orders.foot != 0 \
                 or instance.quantity_orders.bike != 0 \
                 or instance.quantity_orders.car != 0:
-            query_min_of_average = Order.objects.filter(
-                courier_id=instance.courier_id,
-                status_order=StatusOrder.COMPLETE
-            ).values('region').annotate(
-                Avg('delivery_time')
-            ).aggregate(Min('delivery_time__avg'))
-            min_of_average = Decimal(
-                query_min_of_average['delivery_time__avg__min']
+            statistics['rating'] = Courier.get_rating(self.instance.courier_id)
+            statistics['earnings'] = Courier.get_earnings(
+                self.instance.quantity_orders.foot,
+                self.instance.quantity_orders.bike,
+                self.instance.quantity_orders.car
             )
-            statistics['rating'] = Decimal((60 * 60 - min(
-                min_of_average, 60 * 60
-            )) / (60 * 60) * 5).quantize(Decimal('1.11'))
-            statistics['earnings'] = calculate_rating(
-                instance.quantity_orders.foot, 'foot'
-            ) + calculate_rating(
-                instance.quantity_orders.bike, 'bike'
-            ) + calculate_rating(instance.quantity_orders.car, 'car')
         else:
             statistics['earnings'] = 0
         return statistics
 
     def get_working_hours(self, data):
-        return [
-            str(hours) for hours in WorkingHours.objects.filter(
-                courier_id=self.instance.courier_id
-            )
-        ]
+        return [str(hours) for hours in WorkingHours.objects.filter(
+            courier_id=self.instance.courier_id)]
 
     def get_regions(self, data):
-        return [obj.region for obj in Regions.objects.filter(
-            courier_id=self.instance.courier_id
-        )]
+        return Regions.get_regions(self.instance.courier_id)
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

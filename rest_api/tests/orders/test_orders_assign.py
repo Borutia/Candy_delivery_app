@@ -105,6 +105,7 @@ class OrdersAssignTestCase(TestCase):
             "orders": []
         }
         self.assertEqual(response.data, response_data)
+        self.assertNotContains(response, 'assign_time')
 
     def test_available_to_another(self):
         """

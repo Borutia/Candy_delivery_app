@@ -109,7 +109,7 @@ class OrdersCompleteTestCase(TestCase):
         data = {
             "courier_id": 1,
             "order_id": 5,
-            "complete_time": "2020-02-17T09:53:11.649422Z"
+            "complete_time": "2010-02-17T09:53:11.649422Z"
         }
         response = self.client.post(
             '/orders/complete',

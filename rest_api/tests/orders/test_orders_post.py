@@ -120,7 +120,7 @@ class OrdersPostTestCase(TestCase):
         self.assertEqual(response.data, response_data)
 
     def test_empty_field(self):
-        """Загрузка данных с пустым полем, проверка статуса 400"""
+        """Загрузка данных с пустым delivery_hours, проверка статуса 400"""
         orders = {
             "data": [
                 {
@@ -240,6 +240,14 @@ class OrdersPostTestCase(TestCase):
                         "09:00-18:00"
                     ]
                 },
+                {
+                    "order_id": 12,
+                    "weight": -1,
+                    "region": 3,
+                    "delivery_hours": [
+                        "09:00-18:00"
+                    ]
+                }
             ]
         }
         response = self.client.post(
@@ -252,7 +260,8 @@ class OrdersPostTestCase(TestCase):
             'validation_error': {
                 "orders": [
                     {"id": 8},
-                    {"id": 10}
+                    {"id": 10},
+                    {"id": 12}
                 ]
             }
         }

@@ -129,7 +129,7 @@ class OrdersAssign(APIView):
         except Exception:
             return Response(
                 {
-                    'courier_id': ErrorMessage.INSTANCE_NOT_FOUND
+                    'courier_id': ErrorMessage.ERROR_DATA
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -171,7 +171,7 @@ class OrdersComplete(APIView):
         except Exception:
             return Response(
                 {
-                    'order_id': ErrorMessage.INSTANCE_NOT_FOUND
+                    'order_id': ErrorMessage.ERROR_DATA
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )

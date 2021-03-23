@@ -36,9 +36,10 @@ class StatusCourier:
 
 
 class ErrorMessage:
-    """Ответы на ошибку когда экземпляр не найден"""
+    """Ответы сервера при ошибке клиента"""
     INSTANCE_NOT_FOUND = 'Instance not found'
     DATA_NOT_FOUND = 'Data not found'
+    ERROR_DATA = 'Error data'
 
 
 # Грузоподъемность курьера

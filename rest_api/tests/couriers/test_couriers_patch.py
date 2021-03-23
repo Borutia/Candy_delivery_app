@@ -44,7 +44,9 @@ class CouriersPatchTestCase(TestCase):
     def test_courier_good(self):
         """Изменение данных, проверка статуса 200"""
         courier = {
-            "working_hours": ["09:00-12:00"]
+            "working_hours": ["09:00-12:00"],
+            "courier_type": "foot",
+            "regions": [1, 22],
         }
         response = self.client.patch(
             '/couriers/1',
@@ -54,11 +56,12 @@ class CouriersPatchTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         response_data = {
             "courier_id": 1,
-            "courier_type": "bike",
-            "regions": [1, 12, 22],
+            "courier_type": "foot",
+            "regions": [1, 22],
             "working_hours": ["09:00-12:00"]
         }
         self.assertEqual(response.data, response_data)
+        self.assertEqual(response.status_code, 200)
 
     def test_missing_data(self):
         """Обращение к обработчику с пустым телом, проверка статуса 400"""
@@ -82,22 +85,70 @@ class CouriersPatchTestCase(TestCase):
 
     def test_wrong_courier_id(self):
         """
-        Запрос на измение с несуществующим courier_id, проверка статуса 400
+        Запрос на изменение с несуществующим courier_id, проверка статуса 400
         """
         courier = {
             "courier_type": "foot",
         }
         response = self.client.patch(
-            '/couriers/2',
+            '/couriers/100',
             data=courier,
             content_type='application/json'
         )
         self.assertEqual(response.status_code, 400)
 
-    def test_empty_field(self):
-        """Запрос на измение с пустым полем, проверка статуса 400"""
+    def test_validate_time(self):
+        """Запрос на изменение с невалидным временем, проверка статуса 400"""
+        courier = {
+            "working_hours": ["31:35-14:05"],
+        }
+        response = self.client.patch(
+            '/couriers/1',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_negative_region(self):
+        """Запрос на изменение с отрицательным районом, проверка статуса 400"""
+        courier = {
+            "regions": [-10, 5],
+        }
+        response = self.client.patch(
+            '/couriers/1',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_empty_regions(self):
+        """Запрос на изменение с пустым regions, проверка статуса 400"""
         courier = {
             "regions": [],
+        }
+        response = self.client.patch(
+            '/couriers/1',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_empty_working_hours(self):
+        """Запрос на изменение с пустым working_hours, проверка статуса 400"""
+        courier = {
+            "working_hours": [],
+        }
+        response = self.client.patch(
+            '/couriers/1',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_wrong_courier_type(self):
+        """Загрузка данных с невалидным типом курьера, проверка статуса 400"""
+        courier = {
+            "courier_type": "bus",
         }
         response = self.client.patch(
             '/couriers/1',
@@ -109,7 +160,7 @@ class CouriersPatchTestCase(TestCase):
     def test_change_courier_type(self):
         """
         Обращение к обработчику, назначение заказов, смена типа курьера,
-        проверка удаляения не подходящих заказов, проверка статуса 200
+        проверка удаления не подходящих заказов, проверка статуса 200
         """
         courier = {
             "courier_id": 1,
@@ -132,6 +183,9 @@ class CouriersPatchTestCase(TestCase):
             content_type='application/json'
         )
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data['courier_type'], courier_type['courier_type']
+        )
         response = self.client.post(
             '/orders/assign',
             data=courier,
@@ -145,7 +199,7 @@ class CouriersPatchTestCase(TestCase):
     def test_change_regions(self):
         """
         Обращение к обработчику, назначение заказов, смена районов,
-        проверка удаляения не подходящих заказов, проверка статуса 200
+        проверка удаления не подходящих заказов, проверка статуса 200
         """
         courier = {
             "courier_id": 1,
@@ -168,6 +222,9 @@ class CouriersPatchTestCase(TestCase):
             content_type='application/json'
         )
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data['regions'], regions['regions']
+        )
         response = self.client.post(
             '/orders/assign',
             data=courier,
@@ -180,7 +237,7 @@ class CouriersPatchTestCase(TestCase):
     def test_change_working_hours(self):
         """
         Обращение к обработчику, назначение заказов, смена графика работы,
-        проверка удаляения не подходящих заказов, проверка статуса 200
+        проверка удаления не подходящих заказов, проверка статуса 200
         """
         courier = {
             "courier_id": 1,
@@ -203,6 +260,9 @@ class CouriersPatchTestCase(TestCase):
             content_type='application/json'
         )
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data['working_hours'], working_hours['working_hours']
+        )
         response = self.client.post(
             '/orders/assign',
             data=courier,
