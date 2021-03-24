@@ -201,3 +201,21 @@ class OrdersAssignTestCase(TestCase):
         response_orders = [{'id': 3}, {'id': 5}]
         response = sorted(response.data['orders'], key=lambda dct: dct['id'])
         self.assertEqual(response, response_orders)
+
+    def test_intersection_time(self):
+        """
+        Обращение к обработчику, проверка пересечения времени работы курье и
+        времени когда заказ удобно принять,
+        проверка статуса 200
+        """
+        courier = {
+            "courier_id": 8,
+        }
+        response = self.client.post(
+            '/orders/assign',
+            data=courier,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        response_orders = [{'id': 11}]
+        self.assertEqual(response.data['orders'], response_orders)

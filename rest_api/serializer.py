@@ -6,7 +6,7 @@ from django.utils import timezone
 from .models import WorkingHours, QuantityOrders, Courier, Order, \
     DeliveryHours, Regions
 from .const import CourierType, LIFTING_CAPACITY, StatusCourier, StatusOrder
-from .utils import parse_time, check_cross_of_time, get_correct_hours, \
+from .utils import parse_time, is_intersections, get_correct_hours, \
     get_regions
 
 
@@ -126,8 +126,6 @@ class CourierUpdateSerializer(BaseCourierSerializer):
         return data
 
     def update(self, instance, validated_data):
-        if not self.initial_data:
-            raise serializers.ValidationError('Data is empty')
         if self.initial_data.get('courier_type'):
             self.instance.lifting_capacity = LIFTING_CAPACITY[
                 validated_data['courier_type']
@@ -166,7 +164,7 @@ class CourierUpdateSerializer(BaseCourierSerializer):
                     delivery_hours = DeliveryHours.get_delivery_hours(
                         order.order_id
                     )
-                    if not check_cross_of_time(working_hours, delivery_hours):
+                    if not is_intersections(working_hours, delivery_hours):
                         order.status_order = StatusOrder.NEW
                         order.courier = None
                         order.assign_time = None
@@ -325,7 +323,7 @@ class OrdersAssignSerializer(serializers.ModelSerializer):
                 delivery_hours = DeliveryHours.get_delivery_hours(
                     order.order_id
                 )
-                if check_cross_of_time(working_hours, delivery_hours):
+                if is_intersections(working_hours, delivery_hours):
                     order.assign_time = assign_time
                     order.status_order = StatusOrder.IN_PROCESS
                     order.courier_id = self.instance
