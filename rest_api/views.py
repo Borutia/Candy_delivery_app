@@ -126,10 +126,11 @@ class OrdersAssign(APIView):
             instance = Courier.objects.filter(
                 courier_id=request.data['courier_id']
             ).first()
-        except Exception:
+        except Exception as e:
             return Response(
                 {
-                    'courier_id': ErrorMessage.ERROR_DATA
+                    'courier_id': ErrorMessage.ERROR_DATA,
+                    'error': e
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -168,10 +169,11 @@ class OrdersComplete(APIView):
             instance = Order.objects.filter(
                 order_id=request.data['order_id']
             ).first()
-        except Exception:
+        except Exception as e:
             return Response(
                 {
-                    'order_id': ErrorMessage.ERROR_DATA
+                    'order_id': ErrorMessage.ERROR_DATA,
+                    'error': e
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
