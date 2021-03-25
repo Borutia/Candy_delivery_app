@@ -154,13 +154,13 @@ class CourierUpdateSerializer(BaseCourierSerializer):
             for time in self.initial_data['working_hours']:
                 self.instance.workinghours_set.create(**time)
             if self.instance.status_courier == StatusCourier.BUSY:
+                working_hours = WorkingHours.get_working_hours(
+                    self.instance.courier_id
+                )
                 for order in Order.objects.filter(
                     courier_id=self.instance.courier_id,
                     status_order=StatusOrder.IN_PROCESS
                 ):
-                    working_hours = WorkingHours.get_working_hours(
-                        self.instance.courier_id
-                    )
                     delivery_hours = DeliveryHours.get_delivery_hours(
                         order.order_id
                     )
@@ -209,7 +209,7 @@ class CourierUpdateSerializer(BaseCourierSerializer):
                     else:
                         self.instance.quantity_orders.car += 1
                     self.instance.quantity_orders.save()
-                    self.instance.courier_type_in_delivery = None
+                self.instance.courier_type_in_delivery = None
         self.instance.save()
         return self.instance
 
@@ -409,7 +409,8 @@ class OrdersCompleteSerializer(serializers.ModelSerializer):
                 else:
                     self.instance.courier.quantity_orders.car += 1
                 self.instance.courier.quantity_orders.save()
-                self.instance.courier_type_in_delivery = None
+                self.instance.courier.courier_type_in_delivery = None
+            self.instance.save()
             self.instance.courier.save()
         return validated_data
 

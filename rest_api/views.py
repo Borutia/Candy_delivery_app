@@ -130,7 +130,6 @@ class OrdersAssign(APIView):
             return Response(
                 {
                     'courier_id': ErrorMessage.ERROR_DATA,
-                    'error': e
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -173,7 +172,6 @@ class OrdersComplete(APIView):
             return Response(
                 {
                     'order_id': ErrorMessage.ERROR_DATA,
-                    'error': e
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -186,7 +184,6 @@ class OrdersComplete(APIView):
             )
         serializer = OrdersCompleteSerializer(instance, data=request.data)
         if serializer.is_valid():
-            serializer.save()
             return Response(
                 {
                     'order_id': serializer.validated_data['order_id']
