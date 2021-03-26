@@ -119,7 +119,7 @@ server_name - ip адрес машины
 ```
 server {
     listen 80;
-    server_name 185.87.50.66;
+    server_name 178.154.197.21;
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location /static/ {
