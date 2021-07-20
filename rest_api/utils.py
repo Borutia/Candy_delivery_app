@@ -1,3 +1,5 @@
+import tracemalloc
+from functools import wraps
 from itertools import product
 
 from .const import EARNINGS_COEFFICIENT
@@ -43,3 +45,24 @@ def is_intersections(working_hours, delivery_hours):
 def calculate_rating(quantity, courier_type):
     """Заработок на один тип курьера"""
     return quantity * 500 * EARNINGS_COEFFICIENT[courier_type]
+
+
+def profile(function_to_decorate):
+    """Профилирование по памяти"""
+    FILE_CHECK_MEMORY = 'serializer.py'
+    tracemalloc.start()
+
+    @wraps(function_to_decorate)
+    def wrapper(*args, **kwargs):
+        snapshot_start = tracemalloc.take_snapshot()
+        result = function_to_decorate(*args, **kwargs)
+        snapshot_stop = tracemalloc.take_snapshot()
+        stats = snapshot_stop.compare_to(snapshot_start, 'lineno')
+        sum_memory = 0
+        for stat in stats:
+            if stat.traceback[0].filename.find(FILE_CHECK_MEMORY) != -1:
+                print(stat)
+                sum_memory += stat.size
+        print(f'Sum memory: {sum_memory}')
+        return result
+    return wrapper

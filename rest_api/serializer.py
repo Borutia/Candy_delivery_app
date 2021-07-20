@@ -442,8 +442,10 @@ class CouriersGetSerializer(serializers.ModelSerializer):
         return statistics
 
     def get_working_hours(self, data):
-        return [str(hours) for hours in WorkingHours.objects.filter(
-            courier_id=self.instance.courier_id)]
+        for hours in WorkingHours.objects.filter(
+                courier_id=self.instance.courier_id
+        ):
+            yield str(hours)
 
     def get_regions(self, data):
         return Regions.get_regions(self.instance.courier_id)

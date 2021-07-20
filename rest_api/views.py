@@ -5,9 +5,11 @@ from rest_framework.views import APIView
 from .serializer import *
 from .models import Courier, Order
 from .const import ErrorMessage
+from .utils import profile
 
 
 class Couriers(APIView):
+    @profile
     def get(self, request, courier_id):
         """API GET /couriers/$courier_id"""
         instance = Courier.objects.filter(courier_id=courier_id).first()
